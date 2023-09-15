@@ -1,31 +1,55 @@
-/*  Glue functions for the minIni library, based on the C/C++ stdio library
+/*  Glue functions for the minIni library, based on the FatFs and Petit-FatFs
+ *  libraries, see http://elm-chan.org/fsw/ff/00index_e.html
  *
- *  Or better said: this file contains macros that maps the function interface
- *  used by minIni to the standard C/C++ file I/O functions.
- *
- *  By CompuPhase, 2008-2014
+ *  By CompuPhase, 2008-2019
  *  This "glue file" is in the public domain. It is distributed without
  *  warranties or conditions of any kind, either express or implied.
+ *
+ *  (The FatFs and Petit-FatFs libraries are copyright by ChaN and licensed at
+ *  its own terms.)
  */
 
-/* map required file I/O types and functions to the standard C library */
+#define INI_BUFFERSIZE  256       /* maximum line length, maximum path length */
+
+/* You must set FF_USE_STRFUNC to 1 or 2 in the include file ff.h (or tff.h)
+ * to enable the "string functions" fgets() and fputs().
+ */
+#include "ff.h"                   /* include tff.h for Tiny-FatFs */
+
+/* When setting FF_USE_STRFUNC to 2 (for LF to CR/LF translation), INI_LINETERM
+ * should be defined to "\n" (otherwise "\r\n" will be translated by FatFS to
+ * "\r\r\n").
+*/
+#if defined FF_USE_STRFUNC && FF_USE_STRFUNC == 2 && !defined INI_LINETERM
+  #define INI_LINETERM  "\n"
+#endif
+
+#define INI_FILETYPE    FIL
+#define ini_openread(filename,file)   (f_open((file), (filename), FA_READ+FA_OPEN_EXISTING) == FR_OK)
+#define ini_openwrite(filename,file)  (f_open((file), (filename), FA_WRITE+FA_CREATE_ALWAYS) == FR_OK)
+#define ini_close(file)               (f_close(file) == FR_OK)
+#define ini_read(buffer,size,file)    f_gets((buffer), (size), (file))
+#define ini_write(buffer,file)        f_puts((buffer), (file))
+#define ini_remove(filename)          (f_unlink(filename) == FR_OK)
+
+#define INI_FILEPOS                   DWORD
+#define ini_tell(file,pos)            (*(pos) = f_tell((file)))
+#define ini_seek(file,pos)            (f_lseek((file), *(pos)) == FR_OK)
+
+#if defined __KEIL__
+#include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
-
-#define INI_FILETYPE                    FILE*
-#define ini_openread(filename,file)     ((*(file) = fopen((filename),"rb")) != NULL)
-#define ini_openwrite(filename,file)    ((*(file) = fopen((filename),"wb")) != NULL)
-#define ini_openrewrite(filename,file)  ((*(file) = fopen((filename),"r+b")) != NULL)
-#define ini_close(file)                 (fclose(*(file)) == 0)
-#define ini_read(buffer,size,file)      (fgets((buffer),(size),*(file)) != NULL)
-#define ini_write(buffer,file)          (fputs((buffer),*(file)) >= 0)
-#define ini_rename(source,dest)         (rename((source), (dest)) == 0)
-#define ini_remove(filename)            (remove(filename) == 0)
-
-#define INI_FILEPOS                     long int
-#define ini_tell(file,pos)              (*(pos) = ftell(*(file)))
-#define ini_seek(file,pos)              (fseek(*(file), *(pos), SEEK_SET) == 0)
-
-/* for floating-point support, define additional types and functions */
 #define INI_REAL                        float
 #define ini_ftoa(string,value)          sprintf((string),"%f",(value))
 #define ini_atof(string)                (INI_REAL)strtod((string),NULL)
+#endif
+
+static int ini_rename(TCHAR *source, const TCHAR *dest)
+{
+  /* Function f_rename() does not allow drive letters in the destination file */
+  char *drive = strchr(dest, ':');
+  const TCHAR *name = (drive == NULL) ? dest : drive + 1;
+  
+  return (f_rename(source, name) == FR_OK);
+}
