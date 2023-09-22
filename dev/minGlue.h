@@ -36,15 +36,7 @@
 #define ini_tell(file,pos)            (*(pos) = f_tell((file)))
 #define ini_seek(file,pos)            (f_lseek((file), *(pos)) == FR_OK)
 
-#if defined __KEIL__
 #include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#define INI_REAL                        float
-#define ini_ftoa(string,value)          sprintf((string),"%f",(value))
-#define ini_atof(string)                (INI_REAL)strtod((string),NULL)
-#endif
-
 static int ini_rename(TCHAR *source, const TCHAR *dest)
 {
   /* Function f_rename() does not allow drive letters in the destination file */
