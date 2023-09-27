@@ -9,7 +9,7 @@
  *  its own terms.)
  */
 
-#define INI_BUFFERSIZE  256       /* maximum line length, maximum path length */
+#define INI_BUFFERSIZE  512       /* maximum line length, maximum path length */
 
 /* You must set FF_USE_STRFUNC to 1 or 2 in the include file ff.h (or tff.h)
  * to enable the "string functions" fgets() and fputs().
@@ -41,7 +41,6 @@ static int ini_rename(TCHAR *source, const TCHAR *dest)
 {
   /* Function f_rename() does not allow drive letters in the destination file */
   char *drive = strchr(dest, ':');
-  const TCHAR *name = (drive == NULL) ? dest : drive + 1;
-  
-  return (f_rename(source, name) == FR_OK);
+  drive = (drive == NULL) ? dest : drive + 1;
+  return (f_rename(source, drive) == FR_OK);
 }
